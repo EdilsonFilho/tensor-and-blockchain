@@ -1,6 +1,8 @@
 # Project: Using tensors to identify anomalies in blockchain transactions
 
-#### Author: edilsonfilho@lesc.ufc.br
+## Goal.
+Putting into practice some concepts I learned about tensors and a healthy curiosity about Ethreum blockchian transactions. The work is just a draft, something done on a sunday afternoon, when curiosity knocks on the door of our mind. To see the results go to the code>>application.iynp folder
+
 
 ## Introduction
 The use of tensors can help detect anomalies in blockchain transactions due to their ability to model complex patterns and relationships between data.
@@ -50,9 +52,8 @@ d) Invalid Transactions: If the network is being attacked with an invalid transa
 
 e) Increased Transaction Rate: If the network is being attacked with an extortion attack, attackers can try to overload the network with malicious transactions and demand a ransom to stop the attack. This can result in a significant increase in the network transaction fee.
 
-```
 Note: In this project we approach the analysis of gas consumption rates. We will identify the transactions that consumed the most gas. We separate between the addresses of ETH senders and receivers.
-```
+
 
 ### How?
 To accomplish this task, you first need to import the necessary libraries to make the API request and handle the returned JSON. Then the tensor matrix can be created from the collected data. The detection of anomalies in the "gas" column can be done by calculating the Mahalanobis distance.
@@ -65,8 +66,6 @@ ii) "gasPrice" refers to the price of gas in units of ether (ETH), which is set 
 
 Thus, depending on the type of anomaly you are looking for, it may be more relevant to look for anomalies in "gas" or "gasPrice". We used gas. 
 
-## License
-The Laravel framework is open-sourced software licensed under the MIT license.
 
 
 
