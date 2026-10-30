@@ -1,8 +1,15 @@
 # Tensor Chain: anomalies in Ethereum transactions with tensors
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)
+
 This project looks for transactions and addresses with anomalous behavior on **Ethereum mainnet**. It models transactions as tensors and applies tensor decompositions. Data comes from the [Etherscan API V2](https://docs.etherscan.io/).
 
 The original version was a notebook written on a Sunday afternoon (2023). This version is a Python package with a graphical interface (Streamlit) and a command line.
+
+## Architecture
+
+![Architecture](docs/images/architecture.svg)
 
 ## Installation
 
@@ -82,3 +89,7 @@ ruff check src tests && ruff format --check src tests
 ```
 
 The tests do not access the network. The Etherscan client is tested with a fake HTTP session.
+
+## License
+
+[MIT](LICENSE) © 2023-2026 Edilson Filho

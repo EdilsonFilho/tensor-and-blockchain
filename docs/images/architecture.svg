@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 430" width="1000" height="430" role="img" aria-labelledby="title desc">
+  <title id="title">Tensor Chain architecture</title>
+  <desc id="desc">Pipeline: Etherscan API V2, collection, Parquet store, tensor builders and models, all driven by the Streamlit UI and the Typer CLI.</desc>
+  <style>
+    :root { --bg: #ffffff; --box: #f6f8fa; --stroke: #d0d7de; --text: #1f2328; --muted: #59636e; --accent: #0969da; --accent-bg: #ddf4ff; --planned: #8c959f; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0d1117; --box: #161b22; --stroke: #3d444d; --text: #e6edf3; --muted: #9198a1; --accent: #4493f8; --accent-bg: #0c2d6b; --planned: #6e7681; }
+    }
+    .bg { fill: var(--bg); }
+    .box { fill: var(--box); stroke: var(--stroke); stroke-width: 1.5; }
+    .chip { fill: var(--accent-bg); stroke: var(--accent); stroke-width: 1.2; }
+    .chip-planned { fill: none; stroke: var(--planned); stroke-width: 1.2; stroke-dasharray: 5 4; }
+    .title { font: 600 15px system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--text); }
+    .text { font: 12.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--text); }
+    .muted { font: 11.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--muted); }
+    .mono { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; fill: var(--muted); }
+    .planned { font: 12.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--planned); }
+    .arrow { stroke: var(--accent); stroke-width: 2; fill: none; marker-end: url(#head); }
+    .link { stroke: var(--stroke); stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+    .head { fill: var(--accent); }
+  </style>
+  <defs>
+    <marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path class="head" d="M0,0 L10,5 L0,10 z"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" width="1000" height="430" rx="12"/>
+
+  <!-- 1. Etherscan -->
+  <rect class="box" x="20" y="30" width="170" height="270" rx="10"/>
+  <text class="title" x="105" y="58" text-anchor="middle">Etherscan API V2</text>
+  <text class="muted" x="105" y="78" text-anchor="middle">Ethereum mainnet</text>
+  <text class="mono" x="36" y="118">proxy/</text>
+  <text class="mono" x="36" y="134">eth_getBlockByNumber</text>
+  <text class="mono" x="36" y="170">account/txlist</text>
+  <text class="muted" x="36" y="222">3 calls/s on the</text>
+  <text class="muted" x="36" y="238">free plan</text>
+  <text class="muted" x="36" y="262">1000 results per page</text>
+
+  <!-- 2. Collection -->
+  <rect class="box" x="220" y="30" width="170" height="270" rx="10"/>
+  <text class="title" x="305" y="58" text-anchor="middle">Collection</text>
+  <text class="muted" x="305" y="78" text-anchor="middle">data/collect.py</text>
+  <rect class="chip" x="236" y="100" width="138" height="54" rx="7"/>
+  <text class="text" x="305" y="122" text-anchor="middle">Blocks mode</text>
+  <text class="muted" x="305" y="141" text-anchor="middle">entire network</text>
+  <rect class="chip" x="236" y="166" width="138" height="54" rx="7"/>
+  <text class="text" x="305" y="188" text-anchor="middle">Addresses mode</text>
+  <text class="muted" x="305" y="207" text-anchor="middle">full fields</text>
+  <text class="muted" x="305" y="250" text-anchor="middle">rate limit · retries</text>
+  <text class="muted" x="305" y="268" text-anchor="middle">resumable</text>
+
+  <!-- 3. Store -->
+  <rect class="box" x="420" y="30" width="170" height="270" rx="10"/>
+  <text class="title" x="505" y="58" text-anchor="middle">Parquet store</text>
+  <text class="muted" x="505" y="78" text-anchor="middle">data/store.py</text>
+  <text class="mono" x="436" y="118">datasets/&lt;name&gt;/</text>
+  <text class="mono" x="448" y="138">meta.json</text>
+  <text class="mono" x="448" y="158">transactions/</text>
+  <text class="mono" x="448" y="178">blocks/</text>
+  <text class="muted" x="436" y="214">one Parquet part per</text>
+  <text class="muted" x="436" y="230">block chunk or address</text>
+  <text class="muted" x="436" y="256">same schema in</text>
+  <text class="muted" x="436" y="272">both modes</text>
+
+  <!-- 4. Tensors -->
+  <rect class="box" x="620" y="30" width="170" height="270" rx="10"/>
+  <text class="title" x="705" y="58" text-anchor="middle">Tensor builders</text>
+  <text class="muted" x="705" y="78" text-anchor="middle">tensors/build.py</text>
+  <rect class="chip" x="636" y="96" width="138" height="54" rx="7"/>
+  <text class="text" x="705" y="118" text-anchor="middle">𝒳 flow (sparse)</text>
+  <text class="muted" x="705" y="137" text-anchor="middle">from × to × time</text>
+  <rect class="chip" x="636" y="160" width="138" height="54" rx="7"/>
+  <text class="text" x="705" y="182" text-anchor="middle">𝒴 features</text>
+  <text class="muted" x="705" y="201" text-anchor="middle">addr × time × feature</text>
+  <rect class="chip" x="636" y="224" width="138" height="54" rx="7"/>
+  <text class="text" x="705" y="246" text-anchor="middle">N network</text>
+  <text class="muted" x="705" y="265" text-anchor="middle">time × metric</text>
+
+  <!-- 5. Models -->
+  <rect class="box" x="820" y="30" width="160" height="270" rx="10"/>
+  <text class="title" x="900" y="58" text-anchor="middle">Models</text>
+  <text class="muted" x="900" y="78" text-anchor="middle">models/</text>
+  <rect class="chip" x="834" y="96" width="132" height="40" rx="7"/>
+  <text class="text" x="900" y="121" text-anchor="middle">Baseline (MCD)</text>
+  <rect class="chip-planned" x="834" y="146" width="132" height="30" rx="7"/>
+  <text class="planned" x="900" y="166" text-anchor="middle">CP</text>
+  <rect class="chip-planned" x="834" y="184" width="132" height="30" rx="7"/>
+  <text class="planned" x="900" y="204" text-anchor="middle">Tucker</text>
+  <rect class="chip-planned" x="834" y="222" width="132" height="30" rx="7"/>
+  <text class="planned" x="900" y="242" text-anchor="middle">Tensor completion</text>
+  <rect class="chip-planned" x="834" y="260" width="132" height="30" rx="7"/>
+  <text class="planned" x="900" y="280" text-anchor="middle">Coupled (CMTF)</text>
+
+  <!-- Flow arrows -->
+  <path class="arrow" d="M190,165 L218,165"/>
+  <path class="arrow" d="M390,165 L418,165"/>
+  <path class="arrow" d="M590,165 L618,165"/>
+  <path class="arrow" d="M790,165 L818,165"/>
+
+  <!-- Interfaces -->
+  <path class="link" d="M305,300 L305,340"/>
+  <path class="link" d="M705,300 L705,340"/>
+  <path class="link" d="M900,300 L900,340"/>
+  <rect class="box" x="20" y="340" width="960" height="66" rx="10"/>
+  <text class="title" x="40" y="368">Interfaces</text>
+  <text class="text" x="40" y="390">Streamlit UI (Data · Tensor · Anomalies) and Typer CLI (fetch-blocks, fetch-addresses, tensor, baseline)</text>
+
+  <!-- Legend -->
+  <rect class="chip" x="760" y="355" width="16" height="12" rx="3"/>
+  <text class="muted" x="782" y="365">implemented</text>
+  <rect class="chip-planned" x="868" y="355" width="16" height="12" rx="3"/>
+  <text class="muted" x="890" y="365">planned</text>
+</svg>
