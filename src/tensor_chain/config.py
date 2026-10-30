@@ -1,4 +1,4 @@
-"""Configuração lida do ambiente (e de um arquivo .env, se existir)."""
+"""Settings read from the environment (and from a .env file, if present)."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ load_dotenv(find_dotenv(usecwd=True))
 class Settings:
     api_key: str | None
     data_dir: Path
-    rate_limit: float  # chamadas por segundo
+    rate_limit: float  # calls per second
 
 
 def get_settings() -> Settings:

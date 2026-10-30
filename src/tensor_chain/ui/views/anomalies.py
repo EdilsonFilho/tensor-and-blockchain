@@ -1,4 +1,4 @@
-"""Tela Anomalias: baseline de Mahalanobis robusto por transação."""
+"""Anomalies page: robust Mahalanobis baseline per transaction."""
 
 from __future__ import annotations
 
@@ -27,17 +27,17 @@ TABLE_COLUMNS = [
 ]
 
 
-@st.cache_data(show_spinner="Calculando distâncias…", max_entries=8)
+@st.cache_data(show_spinner="Computing distances…", max_entries=8)
 def _score(name: str, version: float, alpha: float) -> pd.DataFrame:
     return mahalanobis_anomalies(load_transactions(name, version), alpha)
 
 
 def render() -> None:
-    st.title("Anomalias (baseline)")
+    st.title("Anomalies (baseline)")
     st.caption(
-        "Mahalanobis robusto (MCD) sobre log(valor em wei), log(gas) e log(gas price), com um "
-        "modelo por tipo de transação. Uma transação é anômala quando o p-valor χ² fica "
-        "abaixo de α."
+        "Robust Mahalanobis (MCD) over log(value in wei), log(gas) and log(gas price), with one "
+        "model per transaction segment. A transaction is anomalous when its χ² p-value is "
+        "below α."
     )
     loaded = require_dataset()
     if loaded is None:
@@ -45,21 +45,21 @@ def render() -> None:
     name, txs = loaded
 
     alpha = st.select_slider(
-        "α (nível de significância)", ALPHAS, value=1e-3, format_func=lambda a: f"{a:.0e}"
+        "α (significance level)", ALPHAS, value=1e-3, format_func=lambda a: f"{a:.0e}"
     )
     scored = _score(name, dataset_version(name), alpha)
     anomalies = scored[scored["is_anomaly"]].sort_values("score", ascending=False)
 
     c1, c2, c3 = st.columns(3)
-    c1.metric("Anomalias", f"{len(anomalies):,}")
-    c2.metric("Proporção", f"{len(anomalies) / len(scored):.2%}")
-    c3.metric("Tipos modelados", len(scored.attrs["thresholds"]))
+    c1.metric("Anomalies", f"{len(anomalies):,}")
+    c2.metric("Share", f"{len(anomalies) / len(scored):.2%}")
+    c3.metric("Segments modeled", len(scored.attrs["thresholds"]))
     st.caption(
-        "Limiar de distância por tipo: "
+        "Distance threshold per segment: "
         + " · ".join(f"{kind} {t:.2f}" for kind, t in scored.attrs["thresholds"].items())
     )
     if txs["fee_estimated"].all():
-        st.info("Dataset por blocos: o gas usado é o limite declarado e a taxa é estimada.")
+        st.info("Blocks dataset: gas is the declared limit and the fee is estimated.")
 
     hist = px.histogram(
         scored,
@@ -68,7 +68,7 @@ def render() -> None:
         nbins=100,
         log_y=True,
         barmode="overlay",
-        title="Distribuição das distâncias por tipo de transação",
+        title="Distance distribution per transaction segment",
     )
     st.plotly_chart(hist)
 
@@ -83,7 +83,7 @@ def render() -> None:
             opacity=0.6,
             color_discrete_map={True: "crimson", False: "steelblue"},
             hover_data=["hash", "kind", "value_eth", "gas_price_gwei"],
-            title="Distância por transação ao longo do tempo",
+            title="Distance per transaction over time",
         ),
     )
 
@@ -104,8 +104,8 @@ def render() -> None:
         hide_index=True,
     )
     st.download_button(
-        "Exportar CSV",
+        "Export CSV",
         anomalies[TABLE_COLUMNS].to_csv(index=False),
-        file_name=f"anomalias-{name}.csv",
+        file_name=f"anomalies-{name}.csv",
         mime="text/csv",
     )

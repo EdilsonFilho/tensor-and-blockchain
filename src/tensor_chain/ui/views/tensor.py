@@ -1,4 +1,4 @@
-"""Tela Tensor: monta 𝒳, 𝒴 e N e permite inspecionar fatias."""
+"""Tensor page: builds 𝒳, 𝒴 and N and lets you inspect slices."""
 
 from __future__ import annotations
 
@@ -24,10 +24,10 @@ from tensor_chain.ui.common import (
     short,
 )
 
-METRIC_LABELS = {"count": "contagem", "value": "valor (gwei)", "fee": "taxa paga (gwei)"}
+METRIC_LABELS = {"count": "count", "value": "value (gwei)", "fee": "fee paid (gwei)"}
 
 
-@st.cache_data(show_spinner="Montando tensores…", max_entries=8)
+@st.cache_data(show_spinner="Building tensors…", max_entries=8)
 def _build(
     name: str, version: float, top_k: int, freq: str, metric: str, include_other: bool
 ) -> tuple[FlowTensor, FeatureTensor, pd.DataFrame]:
@@ -47,11 +47,11 @@ def render() -> None:
     name, _ = loaded
 
     c1, c2, c3, c4 = st.columns(4)
-    top_k = c1.number_input("Top-K endereços", 10, 5_000, 200, step=50)
-    freq = c2.selectbox("Janela de tempo", FREQS, index=1)
-    metric = c3.selectbox("Métrica do fluxo", FLOW_METRICS, format_func=METRIC_LABELS.get)
+    top_k = c1.number_input("Top-K addresses", 10, 5_000, 200, step=50)
+    freq = c2.selectbox("Time window", FREQS, index=1)
+    metric = c3.selectbox("Flow metric", FLOW_METRICS, format_func=METRIC_LABELS.get)
     include_other = c4.checkbox(
-        'Bucket "outros"', value=True, help="Agrega os endereços fora do top-K em um único índice."
+        '"Other" bucket', value=True, help="Aggregates addresses outside the top-K into one index."
     )
 
     flow, feats, network = _build(
@@ -59,23 +59,23 @@ def render() -> None:
     )
     a, _, t = flow.data.shape
     c1, c2, c3 = st.columns(3)
-    c1.metric("𝒳 from × to × tempo", f"{a} × {a} × {t}")
-    c2.metric("Células não nulas", f"{flow.data.nnz:,}")
-    c3.metric("Densidade", f"{flow.density:.2e}")
+    c1.metric("𝒳 from × to × time", f"{a} × {a} × {t}")
+    c2.metric("Non-zero cells", f"{flow.data.nnz:,}")
+    c3.metric("Density", f"{flow.density:.2e}")
 
-    st.subheader("𝒳 — fluxo entre endereços")
-    st.caption(f"Valores em log(1 + {METRIC_LABELS[metric]}).")
+    st.subheader("𝒳 — flow between addresses")
+    st.caption(f"Values in log(1 + {METRIC_LABELS[metric]}).")
     totals = pd.Series(flow.data.sum(axis=(0, 1)).todense(), index=flow.times)
     st.plotly_chart(
         px.bar(
-            totals, labels={"index": "", "value": "soma"}, title="Massa do tensor por janela"
+            totals, labels={"index": "", "value": "sum"}, title="Tensor mass per window"
         ).update_layout(showlegend=False)
     )
 
-    n = st.slider("Endereços na fatia", 1, min(100, a), min(30, a)) if a > 1 else a
+    n = st.slider("Addresses in slice", 1, min(100, a), min(30, a)) if a > 1 else a
     when = (
         st.select_slider(
-            "Janela", options=list(range(t)), format_func=lambda i: f"{flow.times[i]:%d/%m %H:%M}"
+            "Window", options=list(range(t)), format_func=lambda i: f"{flow.times[i]:%b %d %H:%M}"
         )
         if t > 1
         else 0
@@ -87,16 +87,16 @@ def render() -> None:
             slice_,
             x=labels,
             y=labels,
-            labels={"x": "to", "y": "from", "color": "valor"},
+            labels={"x": "to", "y": "from", "color": "value"},
             color_continuous_scale="Blues",
             aspect="auto",
         ),
     )
 
-    st.subheader("𝒴 — features por endereço")
+    st.subheader("𝒴 — features per address")
     st.caption(
         f"{feats.data.shape[0]} × {feats.data.shape[1]} × {feats.data.shape[2]} "
-        "(endereço × tempo × feature)"
+        "(address × time × feature)"
     )
     feature = st.selectbox("Feature", feats.features)
     rows = min(50, len(feats.addresses))
@@ -111,9 +111,9 @@ def render() -> None:
         ),
     )
 
-    st.subheader("N — métricas da rede")
-    long = network.reset_index(names="tempo").melt("tempo", var_name="métrica")
-    fig = px.line(long, x="tempo", y="value", facet_row="métrica", height=160 * network.shape[1])
+    st.subheader("N — network metrics")
+    long = network.reset_index(names="time").melt("time", var_name="metric")
+    fig = px.line(long, x="time", y="value", facet_row="metric", height=160 * network.shape[1])
     fig.update_yaxes(matches=None, title=None).for_each_annotation(
         lambda a: a.update(text=a.text.split("=")[-1])
     )

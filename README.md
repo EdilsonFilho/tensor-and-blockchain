@@ -1,84 +1,84 @@
-# Tensor Chain: anomalias em transações Ethereum com tensores
+# Tensor Chain: anomalies in Ethereum transactions with tensors
 
-Este projeto procura transações e endereços com comportamento anômalo na **Ethereum mainnet**. Ele modela as transações como tensores e aplica decomposições tensoriais. Os dados vêm da [API V2 da Etherscan](https://docs.etherscan.io/).
+This project looks for transactions and addresses with anomalous behavior on **Ethereum mainnet**. It models transactions as tensors and applies tensor decompositions. Data comes from the [Etherscan API V2](https://docs.etherscan.io/).
 
-A versão original era um notebook escrito num domingo à tarde (2023). Esta versão é um pacote Python com interface gráfica (Streamlit) e linha de comando.
+The original version was a notebook written on a Sunday afternoon (2023). This version is a Python package with a graphical interface (Streamlit) and a command line.
 
-## Instalação
+## Installation
 
-Requer Python 3.10 ou superior.
+Requires Python 3.10 or later.
 
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
-cp .env.example .env   # e preencha ETHERSCAN_API_KEY
+cp .env.example .env   # and fill in ETHERSCAN_API_KEY
 ```
 
-Crie uma chave gratuita em <https://etherscan.io/myapikey>. O plano gratuito permite 3 chamadas por segundo e 100 mil chamadas por dia.
+Create a free key at <https://etherscan.io/myapikey>. The free plan allows 3 calls per second and 100k calls per day.
 
-## Uso
+## Usage
 
-### Interface gráfica
+### Graphical interface
 
 ```sh
 tensor-chain ui
 ```
 
-A interface tem três telas:
+The interface has three pages:
 
-- **Dados:** coleta e resumo do dataset.
-- **Tensor:** monta os tensores e permite inspecionar fatias.
-- **Anomalias (baseline):** tabela com links para o Etherscan, gráficos e exportação em CSV.
+- **Data:** collection and dataset summary.
+- **Tensor:** builds the tensors and lets you inspect slices.
+- **Anomalies (baseline):** table with links to Etherscan, charts and CSV export.
 
-### Linha de comando
+### Command line
 
 ```sh
 tensor-chain latest-block
-tensor-chain fetch-blocks --start 21000000 --count 300            # rede toda
-tensor-chain fetch-addresses 0xabc... 0xdef... --name sementes    # endereços-semente
+tensor-chain fetch-blocks --start 21000000 --count 300            # entire network
+tensor-chain fetch-addresses 0xabc... 0xdef... --name seeds       # seed addresses
 tensor-chain datasets
 tensor-chain tensor blocks-21000000-21000299-s1 --top-k 200 --freq 1h
-tensor-chain baseline blocks-21000000-21000299-s1 --alpha 1e-3 --out anomalias.csv
+tensor-chain baseline blocks-21000000-21000299-s1 --alpha 1e-3 --out anomalies.csv
 ```
 
-Se a coleta for interrompida, rode o mesmo comando de novo. Ela retoma de onde parou.
+If a collection is interrupted, run the same command again. It resumes where it stopped.
 
-## Modos de coleta
+## Collection modes
 
-| Modo | Endpoint | Cobertura | Limitações |
+| Mode | Endpoint | Coverage | Limitations |
 |---|---|---|---|
-| **Blocos** | `proxy/eth_getBlockByNumber` | Todas as transações de um intervalo de blocos | 1 chamada por bloco (1 dia ≈ 7.200 blocos ≈ 40 min). O endpoint não traz `gasUsed` nem o status: o gas usado é o **limite** declarado e a taxa é estimada. |
-| **Endereços** | `account/txlist` | Histórico completo dos endereços-semente | Traz todos os campos, mas só enxerga as transações que envolvem as sementes. |
+| **Blocks** | `proxy/eth_getBlockByNumber` | Every transaction in a block range | 1 call per block (1 day ≈ 7,200 blocks ≈ 40 min). The endpoint has no `gasUsed` or status: gas is the declared **limit** and the fee is estimated. |
+| **Addresses** | `account/txlist` | Full history of the seed addresses | All fields, but only the transactions that involve the seeds. The API returns 1,000 transactions per call; pagination is automatic. |
 
-Os dados ficam em `data/datasets/<nome>/`, em partes Parquet.
+Data is stored in `data/datasets/<name>/` as Parquet parts.
 
-## Modelagem
+## Modeling
 
-Os três tensores usam o mesmo índice de endereços (os top-K mais ativos, mais um bucket opcional "outros"):
+The three tensors share the same address index (the top-K most active addresses, plus an optional "other" bucket):
 
-- **𝒳 (from × to × tempo)**, esparso. Cada célula guarda a contagem de transações, o valor transferido ou a taxa paga, em `log1p` (valores em gwei).
-- **𝒴 (endereço × tempo × feature)**, denso. As features são: enviadas, recebidas, valor enviado e recebido, taxa paga, gas price médio, fração de chamadas a contratos, nº de contrapartes e taxa de erro.
-- **N (tempo × rede)**: nº de transações, gas price mediano, base fee e utilização de gas dos blocos.
+- **𝒳 (from × to × time)**, sparse. Each cell holds the transaction count, the value transferred or the fee paid, in `log1p` (amounts in gwei).
+- **𝒴 (address × time × feature)**, dense. The features are: sent, received, value sent and received, fee paid, mean gas price, share of contract calls, number of counterparties and error rate.
+- **N (time × network)**: number of transactions, median gas price, base fee and block gas utilization.
 
 ### Baseline
 
-O baseline calcula a distância de Mahalanobis robusta (MCD) de cada transação a partir de `log(valor)`, `log(gas)` e `log(gas price)`. Há um modelo para cada tipo de transação: transferência, chamada de contrato ou criação de contrato. A separação é necessária porque transferências simples (gas = 21000) e chamadas de contrato formam populações distintas. Uma transação é anômala quando o p-valor χ² fica abaixo de α.
+The baseline computes the robust Mahalanobis distance (MCD) of each transaction from `log(value in wei)`, `log(gas)` and `log(gas price)`. There is one model per segment: transaction kind (transfer, contract call, contract creation) × value (no ETH, dust below 1 gwei, with ETH). The split is needed because these segments are distinct populations on mainnet: plain transfers always use 21,000 gas, ~75% of contract calls send no ETH, and MEV bots pay a few wei. A transaction is anomalous when its χ² p-value is below α.
 
-### Próximos passos
+### Next steps
 
-| Técnica | Tensor | Uso |
+| Technique | Tensor | Use |
 |---|---|---|
-| CP | 𝒳 | Padrões recorrentes de transações (grupo de remetentes × grupo de destinatários × perfil temporal) |
-| Tucker | 𝒴 | Fatores latentes por modo; o core mostra como esses fatores interagem |
-| Tensor completion | 𝒳 com máscara | Interações observadas que o modelo considerava improváveis |
-| Coupled (CMTF) | 𝒳 + atributos + N | Endereços cujo fluxo diverge dos atributos e do contexto da rede |
+| CP | 𝒳 | Recurring transaction patterns (sender group × receiver group × time profile) |
+| Tucker | 𝒴 | Latent factors per mode; the core shows how those factors interact |
+| Tensor completion | Masked 𝒳 | Observed interactions the model considered unlikely |
+| Coupled (CMTF) | 𝒳 + attributes + N | Addresses whose flow diverges from their attributes and from the network context |
 
-## Desenvolvimento
+## Development
 
 ```sh
 pytest
 ruff check src tests && ruff format --check src tests
 ```
 
-Os testes não acessam a rede. O cliente da Etherscan é testado com uma sessão HTTP falsa.
+The tests do not access the network. The Etherscan client is tested with a fake HTTP session.

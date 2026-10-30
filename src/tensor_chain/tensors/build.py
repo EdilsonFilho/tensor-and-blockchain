@@ -1,10 +1,10 @@
-"""Construção dos tensores usados pelos modelos.
+"""Construction of the tensors used by the models.
 
-- 𝒳 fluxo      (from × to × tempo), esparso: CP, completion, CMTF
-- 𝒴 features   (endereço × tempo × feature), denso: Tucker
-- N rede       (tempo × métrica da rede): matriz lateral do CMTF
+- 𝒳 flow      (from × to × time), sparse: CP, completion, CMTF
+- 𝒴 features  (address × time × feature), dense: Tucker
+- N network   (time × network metric): side matrix for CMTF
 
-𝒳 e 𝒴 usam o mesmo índice de endereços, para que os fatores possam ser acoplados.
+𝒳 and 𝒴 share the same address index, so their factors can be coupled.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 import sparse
 
-OTHER = "__outros__"
+OTHER = "__other__"
 FREQS = ("10min", "1h", "6h", "1D")
 FLOW_METRICS = ("count", "value", "fee")
 FEATURES = (
@@ -29,10 +29,10 @@ FEATURES = (
     "n_counterparties",
     "error_rate",
 )
-_RATIO_FEATURES = {"contract_call_ratio", "error_rate"}  # as demais vão em escala log1p
+_RATIO_FEATURES = {"contract_call_ratio", "error_rate"}  # the others use a log1p scale
 _AMOUNT_FEATURES = {"eth_sent", "eth_received", "fee_paid"}
-# Valores em ETH são convertidos para gwei antes do log1p: log1p(x) ≈ x para x < 1, e a
-# maioria das transações move menos de 1 ETH. Em gwei a escala log fica útil e não negativa.
+# ETH amounts are converted to gwei before log1p: log1p(x) ≈ x for x < 1, and most
+# transactions move less than 1 ETH. In gwei the log scale is useful and non-negative.
 GWEI_PER_ETH = 1e9
 
 
@@ -57,9 +57,9 @@ class FeatureTensor:
 
 
 def top_addresses(df: pd.DataFrame, k: int) -> list[str]:
-    """Os k endereços que mais aparecem como remetente ou destinatário."""
+    """The k addresses that appear most often as sender or receiver."""
     counts = pd.concat([df["from"], df["to"].dropna()]).astype(str).value_counts()
-    # Desempate determinístico pelo endereço.
+    # Deterministic tie-break by address.
     ranked = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
     return [address for address, _ in ranked[:k]]
 
@@ -83,17 +83,17 @@ def build_flow_tensor(
     log: bool = True,
 ) -> FlowTensor:
     if metric not in FLOW_METRICS:
-        raise ValueError(f"métrica inválida: {metric!r}")
+        raise ValueError(f"invalid metric: {metric!r}")
     index = list(addresses) + ([OTHER] if include_other else [])
     times = time_index(df, freq)
-    df = df[df["to"].notna()]  # criações de contrato não têm destinatário
+    df = df[df["to"].notna()]  # contract creations have no receiver
     codes = {a: i for i, a in enumerate(addresses)}
     fallback = len(addresses) if include_other else -1
     src = df["from"].map(codes).fillna(fallback).to_numpy("int64")
     dst = df["to"].map(codes).fillna(fallback).to_numpy("int64")
     keep = (src >= 0) & (dst >= 0)
     if include_other:
-        keep &= ~((src == fallback) & (dst == fallback))  # outros→outros não interessa
+        keep &= ~((src == fallback) & (dst == fallback))  # other→other is not informative
 
     weights = {
         "count": np.ones(len(df)),
@@ -169,7 +169,7 @@ def build_feature_tensor(df: pd.DataFrame, addresses: list[str], freq: str = "1h
 def build_network_matrix(
     txs: pd.DataFrame, blocks: pd.DataFrame, times: pd.DatetimeIndex, freq: str
 ) -> pd.DataFrame:
-    """Métricas agregadas da rede por janela de tempo."""
+    """Aggregated network metrics per time window."""
     tx = (
         txs.assign(t=txs["timestamp"].dt.floor(freq))
         .groupby("t")

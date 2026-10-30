@@ -58,7 +58,7 @@ def test_retries_on_rate_limit():
 def test_gives_up_after_max_retries():
     limited = {"status": "0", "message": "NOTOK", "result": "rate limit reached"}
     c, _ = client([limited] * 2, max_retries=2)
-    with pytest.raises(EtherscanError, match="2 tentativas"):
+    with pytest.raises(EtherscanError, match="2 attempts"):
         c.latest_block()
 
 
@@ -82,12 +82,12 @@ def _pages(*pages):
 
 
 def test_txlist_does_not_trust_page_size():
-    # A API devolveu menos do que o pedido (como a V2, que corta em 1000) e ainda há dados.
+    # The API returned fewer rows than requested (as V2 does, capping at 1000) and more remain.
     c, session = client(
         _pages(
             [("a", "1"), ("b", "2"), ("c", "5")],
-            [("c", "5"), ("d", "6")],  # recomeça no bloco 5 e repete "c"
-            [("d", "6")],  # nada novo: fim
+            [("c", "5"), ("d", "6")],  # restarts at block 5 and repeats "c"
+            [("d", "6")],  # nothing new: done
         )
     )
     rows = c.txlist("0xabc", 0, 10)
@@ -97,5 +97,5 @@ def test_txlist_does_not_trust_page_size():
 
 def test_txlist_rejects_block_larger_than_page():
     c, _ = client(_pages([("a", "1"), ("b", "3")], [("c", "3"), ("d", "3")]))
-    with pytest.raises(EtherscanError, match="bloco 3"):
+    with pytest.raises(EtherscanError, match="block 3"):
         c.txlist("0xabc", 0, 10)

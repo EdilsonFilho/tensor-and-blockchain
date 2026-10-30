@@ -1,4 +1,4 @@
-"""Tela Dados: coleta via Etherscan V2 e resumo do dataset selecionado."""
+"""Data page: collection through Etherscan V2 and summary of the selected dataset."""
 
 from __future__ import annotations
 
@@ -41,29 +41,30 @@ def _progress_callback(label: str):
 
 def _blocks_form() -> None:
     settings = get_settings()
-    if st.button("Buscar bloco mais recente"):
+    if st.button("Fetch latest block"):
         try:
             st.session_state["latest_block"] = _client().latest_block()
         except EtherscanError as exc:
             st.error(str(exc))
     latest = st.session_state.get("latest_block")
     if latest:
-        st.caption(f"Bloco mais recente: {latest:,}")
+        st.caption(f"Latest block: {latest:,}")
 
     with st.form("blocks"):
         c1, c2, c3 = st.columns(3)
-        count = c2.number_input("Quantidade de blocos", 1, 50_000, 300)
-        step = c3.number_input("Amostrar 1 a cada N blocos", 1, 1_000, 1)
+        count = c2.number_input("Number of blocks", 1, 50_000, 300)
+        step = c3.number_input("Sample 1 every N blocks", 1, 1_000, 1)
         default_start = max(0, latest - count * step) if latest else 21_000_000
-        start = c1.number_input("Bloco inicial", 0, value=default_start)
-        name = st.text_input("Nome do dataset (opcional)")
+        start = c1.number_input("Start block", 0, value=default_start)
+        name = st.text_input("Dataset name (optional)")
         minutes = count / settings.rate_limit / 60
         span_h = count * step / BLOCKS_PER_DAY * 24
         st.caption(
-            f"{count:,} chamadas ≈ {minutes:.0f} min de coleta · cobre ≈ {span_h:.1f} h de rede. "
-            "O gas de cada transação é o limite declarado (gasUsed não vem neste modo)."
+            f"{count:,} calls ≈ {minutes:.0f} min of collection · covers ≈ {span_h:.1f} h of "
+            "network. Each transaction's gas is the declared limit (gasUsed is not available "
+            "in this mode)."
         )
-        submitted = st.form_submit_button("Coletar", type="primary")
+        submitted = st.form_submit_button("Collect", type="primary")
 
     if submitted:
         numbers = block_numbers(int(start), int(count), int(step))
@@ -76,7 +77,7 @@ def _blocks_form() -> None:
         }
         try:
             path = store.create_dataset(settings.data_dir, name, meta)
-            collect_blocks(_client(), path, numbers, progress=_progress_callback("Blocos"))
+            collect_blocks(_client(), path, numbers, progress=_progress_callback("Blocks"))
         except (EtherscanError, ValueError) as exc:
             st.error(str(exc))
             return
@@ -86,21 +87,21 @@ def _blocks_form() -> None:
 def _addresses_form() -> None:
     settings = get_settings()
     with st.form("addresses"):
-        text = st.text_area("Endereços-semente (um por linha)")
+        text = st.text_area("Seed addresses (one per line)")
         c1, c2 = st.columns(2)
-        start = c1.number_input("Bloco inicial", 0, value=0)
-        end = c2.number_input("Bloco final", 0, value=99_999_999)
-        name = st.text_input("Nome do dataset")
+        start = c1.number_input("Start block", 0, value=0)
+        end = c2.number_input("End block", 0, value=99_999_999)
+        name = st.text_input("Dataset name")
         st.caption(
-            "Histórico completo com gasUsed e status. A API devolve 1000 transações por "
-            "chamada; a paginação é automática."
+            "Full history with gasUsed and status. The API returns 1000 transactions per "
+            "call; pagination is automatic."
         )
-        submitted = st.form_submit_button("Coletar", type="primary")
+        submitted = st.form_submit_button("Collect", type="primary")
 
     if submitted:
         addresses = [a.strip().lower() for a in text.splitlines() if a.strip()]
         if not addresses or not name:
-            st.error("Informe ao menos um endereço e o nome do dataset.")
+            st.error("Enter at least one address and the dataset name.")
             return
         meta = {
             "mode": "addresses",
@@ -116,7 +117,7 @@ def _addresses_form() -> None:
                 addresses,
                 int(start),
                 int(end),
-                progress=_progress_callback("Endereços"),
+                progress=_progress_callback("Addresses"),
             )
         except (EtherscanError, ValueError) as exc:
             st.error(str(exc))
@@ -133,29 +134,29 @@ def _summary() -> None:
     blocks = load_blocks(name, dataset_version(name))
 
     st.subheader(name)
-    mode = "blocos (rede toda)" if meta["mode"] == "blocks" else "endereços-semente"
-    st.caption(f"Modo: {mode} · blocos {meta['start_block']:,} a {meta['end_block']:,}")
+    mode = "blocks (entire network)" if meta["mode"] == "blocks" else "seed addresses"
+    st.caption(f"Mode: {mode} · blocks {meta['start_block']:,} to {meta['end_block']:,}")
     if meta["mode"] == "blocks":
         expected = len(range(meta["start_block"], meta["end_block"] + 1, meta["step"]))
         if len(blocks) < expected:
             st.warning(
-                f"Coleta incompleta: {len(blocks):,} de {expected:,} blocos. "
-                "Coletar de novo com os mesmos parâmetros retoma de onde parou."
+                f"Incomplete collection: {len(blocks):,} of {expected:,} blocks. "
+                "Collecting again with the same parameters resumes where it stopped."
             )
 
     addresses = set(txs["from"]) | set(txs["to"].dropna())
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Transações", f"{len(txs):,}")
-    c2.metric("Endereços únicos", f"{len(addresses):,}")
-    c3.metric("Chamadas a contrato", f"{txs['is_contract_call'].mean():.0%}")
+    c1.metric("Transactions", f"{len(txs):,}")
+    c2.metric("Unique addresses", f"{len(addresses):,}")
+    c3.metric("Contract calls", f"{txs['is_contract_call'].mean():.0%}")
     c4.metric(
-        "Período", f"{txs['timestamp'].min():%d/%m %H:%M} – {txs['timestamp'].max():%d/%m %H:%M}"
+        "Period", f"{txs['timestamp'].min():%b %d %H:%M} – {txs['timestamp'].max():%b %d %H:%M}"
     )
 
     span = txs["timestamp"].max() - txs["timestamp"].min()
     freq = "10min" if span.total_seconds() < 2 * 86_400 else "1h"
-    per_bin = txs.set_index("timestamp").resample(freq).size().rename("transações")
-    st.plotly_chart(px.line(per_bin, title=f"Transações por janela de {freq}"))
+    per_bin = txs.set_index("timestamp").resample(freq).size().rename("transactions")
+    st.plotly_chart(px.line(per_bin, title=f"Transactions per {freq} window"))
 
     c1, c2 = st.columns(2)
     paid = txs[txs["value_eth"] > 0]
@@ -163,16 +164,16 @@ def _summary() -> None:
         px.histogram(
             x=np.log10(paid["value_eth"]),
             nbins=60,
-            labels={"x": "log10(valor em ETH)"},
-            title="Valor transferido (> 0)",
+            labels={"x": "log10(value in ETH)"},
+            title="Value transferred (> 0)",
         ),
     )
     c2.plotly_chart(
         px.histogram(
             x=np.log10(txs["gas_price_gwei"] + 1e-3),
             nbins=60,
-            labels={"x": "log10(gas price em gwei)"},
-            title="Preço do gas",
+            labels={"x": "log10(gas price in gwei)"},
+            title="Gas price",
         ),
     )
 
@@ -185,12 +186,12 @@ def _summary() -> None:
 
 
 def render() -> None:
-    st.title("Dados")
+    st.title("Data")
     if not get_settings().api_key:
-        st.warning("Defina `ETHERSCAN_API_KEY` no arquivo `.env` para coletar dados.")
+        st.warning("Set `ETHERSCAN_API_KEY` in the `.env` file to collect data.")
     else:
-        with st.expander("Nova coleta", expanded=not st.session_state.get("dataset")):
-            by_blocks, by_addresses = st.tabs(["Por blocos", "Por endereços"])
+        with st.expander("New collection", expanded=not st.session_state.get("dataset")):
+            by_blocks, by_addresses = st.tabs(["By blocks", "By addresses"])
             with by_blocks:
                 _blocks_form()
             with by_addresses:

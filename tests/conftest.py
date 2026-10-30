@@ -48,7 +48,7 @@ A, B, C, D = (f"0x{c * 40}" for c in "abcd")
 
 @pytest.fixture
 def blocks() -> list[dict]:
-    """Três blocos em duas horas distintas."""
+    """Three blocks across two different hours."""
     t0 = 1_700_000_000 - 1_700_000_000 % 3600
     return [
         make_block(

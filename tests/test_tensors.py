@@ -17,7 +17,7 @@ from .conftest import A, B, C
 
 
 def test_top_addresses_ranks_by_activity(txs):
-    # A: 4 aparições; B: 3; C e D: 2 cada (desempate alfabético).
+    # A: 4 appearances; B: 3; C and D: 2 each (alphabetical tie-break).
     assert top_addresses(txs, 3) == [A, B, C]
 
 
@@ -26,10 +26,10 @@ def test_flow_tensor_counts(txs):
     assert flow.addresses == [A, B, OTHER]
     assert flow.data.shape == (3, 3, 2)
     dense = flow.data.todense()
-    assert dense[0, 1, 0] == 2  # A→B duas vezes na primeira hora
-    assert dense[0, 2, 0] == 1  # A→C cai em "outros"
+    assert dense[0, 1, 0] == 2  # A→B twice in the first hour
+    assert dense[0, 2, 0] == 1  # A→C falls into "other"
     assert dense[2, 0, 1] == 1  # D→A na segunda hora
-    assert dense.sum() == 4  # criação de contrato e outros→outros (C→D) ficam de fora
+    assert dense.sum() == 4  # contract creation and other→other (C→D) are left out
 
 
 def test_flow_tensor_value_without_other(txs):
@@ -40,7 +40,7 @@ def test_flow_tensor_value_without_other(txs):
 
 def test_feature_tensor(txs):
     feats = build_feature_tensor(txs, [A, B], "1h")
-    assert "error_rate" not in feats.features  # modo blocos não tem status
+    assert "error_rate" not in feats.features  # blocks mode has no status
     assert feats.data.shape == (2, 2, len(feats.features))
     sent = feats.data[0, 0, feats.features.index("n_sent")]
     assert sent == pytest.approx(np.log1p(3))
@@ -65,7 +65,7 @@ def _tx_row(i: int, rng: np.random.Generator, *, call: bool) -> dict:
         "timestamp": 1_700_000_000 + i,
         "from": A,
         "to": B,
-        # Como na mainnet: ~75% das chamadas de contrato não enviam ETH.
+        # As on mainnet: ~75% of contract calls send no ETH.
         "value_eth": 0.0 if call and rng.random() < 0.75 else float(rng.lognormal(-2, 0.5)),
         "gas_limit": int(rng.lognormal(12, 0.5)) if call else 21_000,
         "gas_used": None,
@@ -80,8 +80,8 @@ def _tx_row(i: int, rng: np.random.Generator, *, call: bool) -> dict:
 
 
 def test_baseline_fits_each_transaction_kind():
-    # Transferências (gas sempre 21000) e chamadas de contrato (quase sempre sem valor)
-    # misturadas: um modelo único marcaria como anômalas as chamadas que enviam ETH.
+    # Transfers (gas always 21000) mixed with contract calls (mostly without value): a
+    # single model would flag the calls that send ETH as anomalous.
     rng = np.random.default_rng(1)
     rows = [_tx_row(i, rng, call=i % 2 == 0) for i in range(3_000)]
     rows.append({**rows[1], "hash": "0xbad", "value_eth": 5_000.0, "gas_price_gwei": 2_000.0})
@@ -100,10 +100,10 @@ def test_baseline_fits_each_transaction_kind():
     assert scored.loc["0xbad", "is_anomaly"]
     assert scored.groupby("kind")["is_anomaly"].mean().max() < 0.01
     assert set(scored.attrs["thresholds"]) == {
-        "transferência · com ETH",
-        "chamada · sem ETH",
-        "chamada · com ETH",
+        "transfer · with ETH",
+        "call · no ETH",
+        "call · with ETH",
     }
-    # Tipo com poucas transações fica sem score.
+    # A segment with few transactions gets no score.
     assert np.isnan(scored.loc["0xcreate", "score"])
     assert not scored.loc["0xcreate", "is_anomaly"]
