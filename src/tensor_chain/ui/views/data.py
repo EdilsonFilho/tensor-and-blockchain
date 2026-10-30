@@ -149,9 +149,11 @@ def _summary() -> None:
     c1.metric("Transactions", f"{len(txs):,}")
     c2.metric("Unique addresses", f"{len(addresses):,}")
     c3.metric("Contract calls", f"{txs['is_contract_call'].mean():.0%}")
-    c4.metric(
-        "Period", f"{txs['timestamp'].min():%b %d %H:%M} – {txs['timestamp'].max():%b %d %H:%M}"
-    )
+    first, last = txs["timestamp"].min(), txs["timestamp"].max()
+    if first.date() == last.date():
+        c4.metric(f"Period (UTC, {first:%b %d %Y})", f"{first:%H:%M} – {last:%H:%M}")
+    else:
+        c4.metric(f"Period (UTC, {first:%Y})", f"{first:%b %d} – {last:%b %d}")
 
     span = txs["timestamp"].max() - txs["timestamp"].min()
     freq = "10min" if span.total_seconds() < 2 * 86_400 else "1h"

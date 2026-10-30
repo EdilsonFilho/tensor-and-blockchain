@@ -7,6 +7,8 @@ This project looks for transactions and addresses with anomalous behavior on **E
 
 The original version was a notebook written on a Sunday afternoon (2023). This version is a Python package with a graphical interface (Streamlit) and a command line.
 
+![Anomalies page of the graphical interface](docs/images/ui-anomalies.png)
+
 ## Architecture
 
 ![Architecture](docs/images/architecture.svg)
@@ -37,6 +39,12 @@ The interface has three pages:
 - **Data:** collection and dataset summary.
 - **Tensor:** builds the tensors and lets you inspect slices.
 - **Anomalies (baseline):** table with links to Etherscan, charts and CSV export.
+
+| Data | Tensor |
+|---|---|
+| ![Data page](docs/images/ui-data.png) | ![Tensor page](docs/images/ui-tensor.png) |
+
+The screenshots show 600 mainnet blocks (about 2 hours, 158k transactions) collected in blocks mode.
 
 ### Command line
 
@@ -71,6 +79,18 @@ The three tensors share the same address index (the top-K most active addresses,
 ### Baseline
 
 The baseline computes the robust Mahalanobis distance (MCD) of each transaction from `log(value in wei)`, `log(gas)` and `log(gas price)`. There is one model per segment: transaction kind (transfer, contract call, contract creation) × value (no ETH, dust below 1 gwei, with ETH). The split is needed because these segments are distinct populations on mainnet: plain transfers always use 21,000 gas, ~75% of contract calls send no ETH, and MEV bots pay a few wei. A transaction is anomalous when its χ² p-value is below α.
+
+## Findings on real data
+
+Both figures come from the same sample: 600 consecutive mainnet blocks (158,261 transactions, about 2 hours, October 2026).
+
+**One model per segment.** With a single model for all transactions, the calls that send ETH (16.2% flagged) and the zero-value transfers (2.3%) are flagged far above the significance level, because their value and gas profiles differ from the bulk. Fitting one model per segment brings most segments close to 1%. The rates stay above α = 0.1% because mainnet distributions have heavier tails than a Gaussian, so the χ² threshold is approximate. Dust calls stay at 13.4% because they are a mix of distinct bot strategies, which is the next figure.
+
+![Share of transactions flagged per segment, single model vs. one model per segment](docs/images/analysis-segments.png)
+
+**Bots send the block number as `msg.value`.** 568 of the 1,436 dust calls (less than 1 gwei) send exactly the number of the block they were included in, in wei. They come from only 23 senders and call vanity function selectors such as `0x70000000` and `0x000000c3`, a pattern typical of MEV searchers. The baseline surfaced them as anomalies before this pattern was known, which is the kind of behavior the project is meant to find.
+
+![Dust contract calls: value sent vs. block number](docs/images/analysis-mev.png)
 
 ### Next steps
 
