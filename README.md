@@ -1,78 +1,84 @@
-# Project: Using tensors to identify anomalies in blockchain transactions
+# Tensor Chain: anomalias em transações Ethereum com tensores
 
-## Goal.
-Putting into practice some concepts I learned about tensors and a healthy curiosity about Ethreum blockchian transactions. The work is just a draft, something done on a sunday afternoon, when curiosity knocks on the door of our mind. To see the results go to the code>>application.iynp folder
+Este projeto procura transações e endereços com comportamento anômalo na **Ethereum mainnet**. Ele modela as transações como tensores e aplica decomposições tensoriais. Os dados vêm da [API V2 da Etherscan](https://docs.etherscan.io/).
 
+A versão original era um notebook escrito num domingo à tarde (2023). Esta versão é um pacote Python com interface gráfica (Streamlit) e linha de comando.
 
-## Introduction
-The use of tensors can help detect anomalies in blockchain transactions due to their ability to model complex patterns and relationships between data.
-Tensors are multidimensional mathematical data structures that can be used to represent data with multiple dimensions, such as images, videos, and time series. In a blockchain transaction, tensors can be used to represent various dimensions of data such as time, transaction types, amounts transferred, and addresses involved.
-For example, a tensor can be created to represent all transactions that occur in a certain period of time on a specific blockchain. Different dimensions of the tensor can represent different aspects of transactions, such as time of day, source and destination addresses, and amount transferred.
-With this data modeled in tensors, machine learning algorithms can be applied to detect transaction anomalies. For example, anomaly detection algorithms can be trained to identify unusual patterns in transactions, such as large amounts of money transferred to unknown addresses or transactions that occur at unusual times.
-In this way, the use of tensors can help identify suspicious transactions in blockchains and provide users with greater security and transparency in their transactions.
+## Instalação
 
-##### Development environment setup
-In terminal 
-1- Start
+Requer Python 3.10 ou superior.
 
 ```sh
-pip install virtualenv
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+cp .env.example .env   # e preencha ETHERSCAN_API_KEY
 ```
+
+Crie uma chave gratuita em <https://etherscan.io/myapikey>. O plano gratuito permite 3 chamadas por segundo e 100 mil chamadas por dia.
+
+## Uso
+
+### Interface gráfica
 
 ```sh
-virtualenv tensor-blockchain
-```
-```sh 
-source tensor-blockchain/bin/activate
+tensor-chain ui
 ```
 
-2- Install dependencies
+A interface tem três telas:
+
+- **Dados:** coleta e resumo do dataset.
+- **Tensor:** monta os tensores e permite inspecionar fatias.
+- **Anomalias (baseline):** tabela com links para o Etherscan, gráficos e exportação em CSV.
+
+### Linha de comando
+
 ```sh
-pip3 install scipy
+tensor-chain latest-block
+tensor-chain fetch-blocks --start 21000000 --count 300            # rede toda
+tensor-chain fetch-addresses 0xabc... 0xdef... --name sementes    # endereços-semente
+tensor-chain datasets
+tensor-chain tensor blocks-21000000-21000299-s1 --top-k 200 --freq 1h
+tensor-chain baseline blocks-21000000-21000299-s1 --alpha 1e-3 --out anomalias.csv
 ```
+
+Se a coleta for interrompida, rode o mesmo comando de novo. Ela retoma de onde parou.
+
+## Modos de coleta
+
+| Modo | Endpoint | Cobertura | Limitações |
+|---|---|---|---|
+| **Blocos** | `proxy/eth_getBlockByNumber` | Todas as transações de um intervalo de blocos | 1 chamada por bloco (1 dia ≈ 7.200 blocos ≈ 40 min). O endpoint não traz `gasUsed` nem o status: o gas usado é o **limite** declarado e a taxa é estimada. |
+| **Endereços** | `account/txlist` | Histórico completo dos endereços-semente | Traz todos os campos, mas só enxerga as transações que envolvem as sementes. |
+
+Os dados ficam em `data/datasets/<nome>/`, em partes Parquet.
+
+## Modelagem
+
+Os três tensores usam o mesmo índice de endereços (os top-K mais ativos, mais um bucket opcional "outros"):
+
+- **𝒳 (from × to × tempo)**, esparso. Cada célula guarda a contagem de transações, o valor transferido ou a taxa paga, em `log1p` (valores em gwei).
+- **𝒴 (endereço × tempo × feature)**, denso. As features são: enviadas, recebidas, valor enviado e recebido, taxa paga, gas price médio, fração de chamadas a contratos, nº de contrapartes e taxa de erro.
+- **N (tempo × rede)**: nº de transações, gas price mediano, base fee e utilização de gas dos blocos.
+
+### Baseline
+
+O baseline calcula a distância de Mahalanobis robusta (MCD) de cada transação a partir de `log(valor)`, `log(gas)` e `log(gas price)`. Há um modelo para cada tipo de transação: transferência, chamada de contrato ou criação de contrato. A separação é necessária porque transferências simples (gas = 21000) e chamadas de contrato formam populações distintas. Uma transação é anômala quando o p-valor χ² fica abaixo de α.
+
+### Próximos passos
+
+| Técnica | Tensor | Uso |
+|---|---|---|
+| CP | 𝒳 | Padrões recorrentes de transações (grupo de remetentes × grupo de destinatários × perfil temporal) |
+| Tucker | 𝒴 | Fatores latentes por modo; o core mostra como esses fatores interagem |
+| Tensor completion | 𝒳 com máscara | Interações observadas que o modelo considerava improváveis |
+| Coupled (CMTF) | 𝒳 + atributos + N | Endereços cujo fluxo diverge dos atributos e do contexto da rede |
+
+## Desenvolvimento
+
 ```sh
-python3 -m pip install matplotlib
+pytest
+ruff check src tests && ruff format --check src tests
 ```
 
-## Anomaly detection with Mahalanobis distances
-To detect anomalies from Mahalanobis distances, it is necessary to define a threshold to consider a point as anomalous. An approach based on a reference model can be used, where a set of reference points is used to estimate the Mahalanobis distance distribution of the normal points. Points that are beyond a certain number of standard deviations from this distribution can be considered anomalous.
-
-
-## What characteristics can be found when a blockchain network suffers an attack?
-
-When a blockchain network suffers an attack, several characteristics can be observed, depending on the type of attack and the vulnerability of the network. Some of the common features that can be found are:
-
-a) Transaction confirmation delays: If the network is being attacked with transaction spam, legitimate transactions may take longer to confirm due to competition with malicious transactions.
-
-b) Hash rate reduction: If the network is being attacked with a 51% mining attack, the hash rate of the network can decrease as the attackers control most of the processing power of the network.
-
-c) Chain Forks: If the network is being attacked with a double spending attack, the network nodes may perceive the existence of two different chains, since the attackers have created a transaction that spends the same balance on two different blocks. This can result in a fork in the chain, where the nodes diverge from the main chain.
-
-d) Invalid Transactions: If the network is being attacked with an invalid transaction attack, attackers may try to send transactions that do not follow network rules, such as spending more than the available balance. Network nodes must reject these transactions, but they can cause network outages and congestion.
-
-e) Increased Transaction Rate: If the network is being attacked with an extortion attack, attackers can try to overload the network with malicious transactions and demand a ransom to stop the attack. This can result in a significant increase in the network transaction fee.
-
-Note: In this project we approach the analysis of gas consumption rates. We will identify the transactions that consumed the most gas. We separate between the addresses of ETH senders and receivers.
-
-
-### How?
-To accomplish this task, you first need to import the necessary libraries to make the API request and handle the returned JSON. Then the tensor matrix can be created from the collected data. The detection of anomalies in the "gas" column can be done by calculating the Mahalanobis distance.
-
-Gás or gás price?
-
-i) The "gas" refers to the amount of gas that was used in a transaction, which is the measure of computational resources required to execute an operation on the blockchain. A high amount of gas used in a transaction can indicate a complex operation or an attempt to perform a denial of service (DoS) attack on the network.
-
-ii) "gasPrice" refers to the price of gas in units of ether (ETH), which is set by the transaction sender as an incentive for miners to process the transaction faster. A very high gasPrice rate may indicate an attempt to spam the network or to prioritize an illegitimate transaction.
-
-Thus, depending on the type of anomaly you are looking for, it may be more relevant to look for anomalies in "gas" or "gasPrice". We used gas. 
-
-
-
-
-
-
-
-
-
- 
-
+Os testes não acessam a rede. O cliente da Etherscan é testado com uma sessão HTTP falsa.
